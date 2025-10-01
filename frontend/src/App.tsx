@@ -1,6 +1,7 @@
 import "./App.css";
 import { useState, useEffect } from "react";
 
+
 type Playlist = {
   id: string;
   name: string;
@@ -17,16 +18,17 @@ function App() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const API = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
-    fetch("https://127.0.0.1:8000/playlists", { credentials: "include" })
+    fetch(`${API}/playlists`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => setPlaylists(data));
   }, []);
 
   const loadTracks = (playlistId: string) => {
     setSelected(playlistId);
-    fetch(`https://127.0.0.1:8000/playlist/${playlistId}`, { credentials: "include" })
+    fetch(`${API}/playlist/${playlistId}`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => setTracks(data));
   };
@@ -46,7 +48,7 @@ function App() {
     URL.revokeObjectURL(url);
   };
   const login = () => {
-  window.location.href = "https://127.0.0.1:8000/login";
+  window.location.href = `${API}/login`;
   };
 
 return (

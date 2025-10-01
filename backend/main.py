@@ -99,7 +99,6 @@ async def get_playlist_tracks(playlist_id: str):
         for item in tracks["items"] if item["track"]
     ]
 
-
     return JSONResponse(simplified)
 
 
