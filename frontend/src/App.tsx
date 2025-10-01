@@ -47,9 +47,9 @@ function App() {
     a.click();
     URL.revokeObjectURL(url);
   };
-  const login = () => {
-  window.location.href = `${API}/login`;
-  };
+  // const login = () => {
+  // window.location.href = `${API}/login`;
+  // };
 
 return (
   <div className="app">
