@@ -2,6 +2,7 @@
 import os, base64, secrets
 from urllib.parse import urlencode
 from fastapi import FastAPI, HTTPException
+from fastapi import Cookie
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware 
 import httpx
@@ -12,7 +13,7 @@ load_dotenv()
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
-
+FRONTEND_URL= os.getenv("FRONTEND_URL")
 SPOTIFY_ACCOUNTS = "https://accounts.spotify.com"
 SPOTIFY_API = "https://api.spotify.com/v1"
 
@@ -21,7 +22,9 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",   # React(Vite)
-    "http://127.0.0.1:5173",   # 念のため
+    "http://127.0.0.1:5173",  
+    "https://retrive-spotify-playlist.vercel.app",
+
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -74,13 +77,48 @@ async def callback(code: str = None):
                              headers={"Authorization": f"Bearer {access_token}"})
         r.raise_for_status()
         playlists = r.json()
+    
+    redirect = RedirectResponse(url=FRONTEND_URL)
+    redirect.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="none"
+    )
 
-    return JSONResponse(playlists)
+    return redirect
+
+
+@app.get("/playlists")
+async def get_playlists(access_token: str = Cookie(None)):
+    if not access_token:
+        raise HTTPException(401, "Not logged in")
+    
+
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SPOTIFY_API}/me/playlists",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        r.raise_for_status()
+        playlists = r.json()
+
+    simplified = [
+        {
+            "id": item["id"],
+            "name": item["name"],
+            "image": item["images"][0]["url"] if item["images"] else None
+        }
+        for item in playlists["items"]
+    ]
+
+    return JSONResponse(simplified)
+
+
 
 @app.get("/playlist/{playlist_id}")
-async def get_playlist_tracks(playlist_id: str):
-    # 保存された access_token を使う
-    access_token = getattr(app.state, "access_token", None)
+async def get_playlist_tracks(playlist_id: str, access_token: str = Cookie(None)):
     if not access_token:
         raise HTTPException(401, "Not logged in. Please go to /login first.")
 
@@ -102,28 +140,3 @@ async def get_playlist_tracks(playlist_id: str):
     return JSONResponse(simplified)
 
 
-
-@app.get("/playlists")
-async def get_playlists():
-    access_token = getattr(app.state, "access_token", None)
-    if not access_token:
-        raise HTTPException(401, "Not logged in. Please go to /login first.")
-
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SPOTIFY_API}/me/playlists",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-        r.raise_for_status()
-        playlists = r.json()
-
-    simplified = [
-        {
-            "id": item["id"],
-            "name": item["name"],
-            "image": item["images"][0]["url"] if item["images"] else None
-        }
-        for item in playlists["items"]
-    ]
-
-    return JSONResponse(simplified)
