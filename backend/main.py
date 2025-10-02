@@ -13,22 +13,33 @@ load_dotenv()
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
-FRONTEND_URL= os.getenv("FRONTEND_URL")
+FRONTEND_URL= os.getenv("FRONTEND_URL", "https://retrive-spotify-playlist.vercel.app")
 SPOTIFY_ACCOUNTS = "https://accounts.spotify.com"
 SPOTIFY_API = "https://api.spotify.com/v1"
 
+if not CLIENT_ID or not CLIENT_SECRET or not REDIRECT_URI or not FRONTEND_URL:
+    raise RuntimeError("Spotify credentials and FRONTEND_URL must be configured")
+
 app = FastAPI()
+allow_origin_regex = os.getenv(
+    "ALLOWED_ORIGIN_REGEX",
+    r"https://retrive-spotify-playlist-.*\.vercel\.app",
+)
 
+raw_origins = os.getenv("ALLOWED_ORIGINS")
+if raw_origins:
+    origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+else:
+    origins = [
+        "http://localhost:5173",   # React(Vite)
+        "http://127.0.0.1:5173",   # 念のため
+        "https://retrive-spotify-playlist.vercel.app",
+    ]
 
-origins = [
-    "http://localhost:5173",   # React(Vite)
-    "http://127.0.0.1:5173",  
-    "https://retrive-spotify-playlist.vercel.app",
-
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,     # 許可するオリジン
+    allow_origins=origins,    
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
